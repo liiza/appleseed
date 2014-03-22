@@ -88,6 +88,7 @@ RenderTab::RenderTab(
 void RenderTab::clear()
 {
     m_render_widget->clear(Color4f(0.0f));
+    m_render_widget->repaint();
 }
 
 void RenderTab::darken()
@@ -221,6 +222,16 @@ void RenderTab::create_toolbar()
         SIGNAL(signal_clear_render_region()));
     m_toolbar->addWidget(m_clear_render_region_button);
 
+    // Create the Clear Frame button in the render toolbar.
+    m_clear_frame_button = new QToolButton();
+    m_clear_frame_button->setIcon(QIcon(":/icons/picture_empty.png"));
+    m_clear_frame_button->setToolTip("Clear Frame");
+    m_clear_frame_button->setShortcut(Qt::Key_X);
+    connect(
+        m_clear_frame_button, SIGNAL(clicked()),
+        SIGNAL(signal_clear_frame()));
+    m_toolbar->addWidget(m_clear_frame_button);
+
     m_toolbar->addSeparator();
 
     // Create the Reset Zoom button in the render toolbar.
@@ -325,6 +336,11 @@ void RenderTab::recreate_handlers()
     // Initially, the picking handler is active and the render region is inactive.
     m_picking_handler->set_enabled(true);
     m_render_region_handler->set_enabled(false);
+}
+
+void RenderTab::set_clear_frame_button_enabled(const bool enabled)
+{
+    m_clear_frame_button->setEnabled(enabled);
 }
 
 }   // namespace studio

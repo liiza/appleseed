@@ -38,6 +38,7 @@
 #include "mainwindow/project/attributeeditor.h"
 #include "mainwindow/project/projectexplorer.h"
 #include "mainwindow/logwidget.h"
+#include "mainwindow/minimizebutton.h"
 #include "utility/interop.h"
 #include "utility/miscellaneous.h"
 #include "utility/settingskeys.h"
@@ -85,6 +86,7 @@
 #include <QString>
 #include <QStringList>
 #include <Qt>
+#include <QToolButton>
 #include <QUrl>
 
 // boost headers.
@@ -113,6 +115,7 @@ MainWindow::MainWindow(QWidget* parent)
   , m_rendering_manager(m_status_bar)
   , m_project_explorer(0)
   , m_attribute_editor(0)
+  , m_project_file_watcher(0)
 {
     m_ui->setupUi(this);
 
@@ -134,6 +137,7 @@ MainWindow::MainWindow(QWidget* parent)
     remove_render_widgets();
     update_workspace();
 
+    build_minimize_buttons();
     showMaximized();
 
     setAcceptDrops(true);
@@ -244,6 +248,11 @@ void MainWindow::build_menus()
     m_ui->menu_view->addAction(m_ui->project_explorer->toggleViewAction());
     m_ui->menu_view->addAction(m_ui->attribute_editor->toggleViewAction());
     m_ui->menu_view->addAction(m_ui->log->toggleViewAction());
+    m_ui->menu_view->addSeparator();
+
+    QAction* fullscreen_action = m_ui->menu_view->addAction("Fullscreen");
+    fullscreen_action->setShortcut(Qt::Key_F11);
+    connect(fullscreen_action, SIGNAL(triggered()), SLOT(slot_fullscreen()));
 
     //
     // Rendering menu.
@@ -496,6 +505,20 @@ void MainWindow::build_project_explorer()
     m_ui->pushbutton_clear_filter->setEnabled(false);
 }
 
+void MainWindow::build_minimize_buttons()
+{
+    m_minimize_buttons.push_back(new MinimizeButton(m_ui->project_explorer));
+    m_minimize_buttons.push_back(new MinimizeButton(m_ui->attribute_editor));
+    m_minimize_buttons.push_back(new MinimizeButton(m_ui->log));
+
+    for (size_t index = 0; index < m_minimize_buttons.size(); ++index)
+    {
+        statusBar()->insertPermanentWidget(
+            static_cast<int>(index + 1),
+            m_minimize_buttons[index]);
+    }
+}
+
 void MainWindow::build_connections()
 {
     connect(
@@ -646,7 +669,8 @@ void MainWindow::on_project_change()
 
     restore_state_after_project_open();
 
-    m_project_file_watcher->addPath(m_project_manager.get_project()->get_path());
+    if (m_project_file_watcher)
+        m_project_file_watcher->addPath(m_project_manager.get_project()->get_path());
 }
 
 void MainWindow::update_workspace()
@@ -770,6 +794,13 @@ void MainWindow::set_rendering_widgets_enabled(const bool is_enabled, const bool
 
     // Rendering -> Render Settings.
     m_ui->action_rendering_render_settings->setEnabled(allow_starting_rendering);
+
+    // Rendering -> Clear Frame.
+    if (is_project_open)
+    {
+        const int current_tab_index = m_ui->tab_render_channels->currentIndex();
+        m_tab_index_to_render_tab[current_tab_index]->set_clear_frame_button_enabled(!is_rendering);        
+    }
 }
 
 void MainWindow::recreate_render_widgets()
@@ -788,6 +819,7 @@ void MainWindow::remove_render_widgets()
         delete i->second;
 
     m_render_tabs.clear();
+    m_tab_index_to_render_tab.clear();
 
     while (m_ui->tab_render_channels->count() > 0)
         m_ui->tab_render_channels->removeTab(0);
@@ -818,17 +850,24 @@ void MainWindow::add_render_widget(const QString& label)
     connect(
         render_tab, SIGNAL(signal_reset_zoom()),
         SLOT(slot_reset_zoom()));
+    connect(
+        render_tab, SIGNAL(signal_clear_frame()),
+        SLOT(slot_clear_frame()));
 
     // Add the render tab to the tab bar.
-    m_ui->tab_render_channels->addTab(render_tab, label);
+    const int tab_index = m_ui->tab_render_channels->addTab(render_tab, label);
 
-    // Update the label -> render tab mapping.
+    // Update the mappings.
     m_render_tabs[label.toStdString()] = render_tab;
+    m_tab_index_to_render_tab[tab_index] = render_tab;
 }
 
 void MainWindow::slot_file_changed(const QString& path)
 {
+    assert(m_project_file_watcher);
+
     RENDERER_LOG_INFO("project file changed on disk, reloading it.");
+
     m_project_file_watcher->removePath(path);
     slot_reload_project();
 }
@@ -1090,6 +1129,32 @@ void MainWindow::slot_save_project_as()
     }
 }
 
+void MainWindow::slot_fullscreen()
+{
+    m_fullscreen = !m_fullscreen;
+
+    bool all_minimized = true;
+    bool not_minimized = false;
+    for (each<vector<MinimizeButton*> > button = m_minimize_buttons; button; ++button)
+    {
+        all_minimized = all_minimized && (*button)->is_on();
+        not_minimized = not_minimized || !(*button)->is_on();
+    }
+
+    // All were manually minimized, exit full screen mode
+    if (all_minimized)
+        m_fullscreen = false;
+
+    // At least one is on screen, enter full screen mode
+    if (not_minimized)
+        m_fullscreen = true;
+
+    for (each<vector<MinimizeButton*> > button = m_minimize_buttons; button; ++button)
+    {
+        (*button)->set_fullscreen(m_fullscreen);
+    }
+}
+
 void MainWindow::slot_project_modified()
 {
     assert(m_project_manager.is_project_open());
@@ -1270,10 +1335,8 @@ void MainWindow::slot_set_render_region(const QRect& rect)
 
 void MainWindow::slot_reset_zoom()
 {
-    m_render_tabs[
-        (m_ui->tab_render_channels->
-            tabText(m_ui->tab_render_channels->
-                currentIndex())).toStdString()]->reset_zoom();
+    const int current_tab_index = m_ui->tab_render_channels->currentIndex();
+    m_tab_index_to_render_tab[current_tab_index]->reset_zoom();
 }
 
 void MainWindow::slot_camera_changed()

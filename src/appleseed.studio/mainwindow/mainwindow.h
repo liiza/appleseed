@@ -56,6 +56,7 @@
 // Forward declarations.
 namespace appleseed { namespace studio { class AttributeEditor; } }
 namespace appleseed { namespace studio { class ProjectExplorer; } }
+namespace appleseed { namespace studio { class MinimizeButton; } }
 namespace Ui        { class MainWindow; }
 class QAction;
 class QCloseEvent;
@@ -103,6 +104,7 @@ class MainWindow
     QAction*                                m_action_stop_rendering;
 
     std::vector<QAction*>                   m_recently_opened;
+    std::vector<MinimizeButton*>            m_minimize_buttons;
 
     StatusBar                               m_status_bar;
     std::auto_ptr<QtLogTarget>              m_log_target;
@@ -123,6 +125,7 @@ class MainWindow
     typedef std::map<std::string, RenderTab::State> RenderTabStateCollection;
 
     RenderTabCollection                     m_render_tabs;
+    std::map<int, RenderTab*>               m_tab_index_to_render_tab;
 
     struct StateBeforeProjectOpen
     {
@@ -131,6 +134,8 @@ class MainWindow
     };
 
     std::auto_ptr<StateBeforeProjectOpen>   m_state_before_project_open;
+
+    bool                                    m_fullscreen;
 
     void build_menus();
     void build_override_shading_menu_item();
@@ -143,6 +148,7 @@ class MainWindow
     void build_toolbar();
     void build_log_panel();
     void build_project_explorer();
+    void build_minimize_buttons();
 
     void build_connections();
 
@@ -189,6 +195,8 @@ class MainWindow
     void slot_open_project_complete(const QString& filepath, const bool successful);
     void slot_save_project();
     void slot_save_project_as();
+
+    void slot_fullscreen();
 
     void slot_project_modified();
     void slot_frame_modified();
