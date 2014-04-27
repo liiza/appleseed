@@ -39,6 +39,8 @@
 #include "mainwindow/project/projectexplorer.h"
 #include "mainwindow/logwidget.h"
 #include "mainwindow/minimizebutton.h"
+#include "mainwindow/rendering/renderinghistory.h"
+#include "mainwindow/rendering/renderwidget.h"
 #include "utility/interop.h"
 #include "utility/miscellaneous.h"
 #include "utility/settingskeys.h"
@@ -56,6 +58,7 @@
 
 // appleseed.foundation headers.
 #include "foundation/core/appleseed.h"
+#include "foundation/image/image.h"
 #include "foundation/math/aabb.h"
 #include "foundation/math/vector.h"
 #include "foundation/platform/compiler.h"
@@ -125,6 +128,7 @@ MainWindow::MainWindow(QWidget* parent)
     build_toolbar();
     build_log_panel();
     build_project_explorer();
+    build_rendering_history();
 
     build_connections();
 
@@ -250,6 +254,7 @@ void MainWindow::build_menus()
     m_ui->menu_view->addAction(m_ui->project_explorer->toggleViewAction());
     m_ui->menu_view->addAction(m_ui->attribute_editor->toggleViewAction());
     m_ui->menu_view->addAction(m_ui->log->toggleViewAction());
+    m_ui->menu_view->addAction(m_ui->rendering_history->toggleViewAction());
     m_ui->menu_view->addSeparator();
 
     QAction* fullscreen_action = m_ui->menu_view->addAction("Fullscreen");
@@ -563,6 +568,25 @@ void MainWindow::build_minimize_buttons()
     }
 }
 
+void MainWindow::remove_rendering_history()
+{
+    m_ui->rendering_history_contents->layout()->removeWidget(m_rendering_history);
+    delete m_rendering_history;
+}
+
+void MainWindow::build_rendering_history()
+{
+    m_rendering_history = new Renderinghistory();
+    m_ui->rendering_history_contents->layout()->addWidget(m_rendering_history);
+
+    connect(
+        this, SIGNAL(signal_take_snapshot(const QString&)),
+        m_rendering_history, SLOT(slot_add_item(const QString&)));
+
+     connect(m_rendering_history, SIGNAL(signal_item_selected(const QString&)),
+         this, SLOT(slot_set_frame_image(const QString&)));
+}
+
 void MainWindow::build_connections()
 {
     connect(
@@ -576,6 +600,11 @@ void MainWindow::build_connections()
     connect(
         &m_rendering_manager, SIGNAL(signal_camera_changed()),
         SLOT(slot_camera_changed()));
+
+    QShortcut *shortcut = new QShortcut(QKeySequence("Ctrl+E"), this);
+    connect(
+        shortcut, SIGNAL(activated()),
+        SLOT(slot_take_snapshot()));
 }
 
 void MainWindow::print_startup_information()
@@ -715,6 +744,9 @@ void MainWindow::on_project_change()
 
     if (m_project_file_watcher)
         m_project_file_watcher->addPath(m_project_manager.get_project()->get_path());
+
+    remove_rendering_history();
+    build_rendering_history();
 }
 
 void MainWindow::update_workspace()
@@ -1633,6 +1665,45 @@ void MainWindow::slot_clear_frame()
     // In the UI, clear all render widgets to black.
     for (const_each<RenderTabCollection> i = m_render_tabs; i; ++i)
         i->second->clear();
+}
+
+void MainWindow::slot_set_frame_image(const QString& filename)
+{
+    slot_clear_frame();
+    std::string file_path = filename.toStdString();
+    m_project_manager.get_project()->get_frame()->read_and_set_main_image(file_path.c_str());
+
+    // In the UI, repaint all render widgets.
+    for (const_each<RenderTabCollection> i = m_render_tabs; i; ++i)
+    {
+        i->second->get_render_widget()->blit_frame(*m_project_manager.get_project()->get_frame());
+        i->second->get_render_widget()->repaint();
+    }
+}
+
+void MainWindow::slot_take_snapshot()
+{
+    Project* project = m_project_manager.get_project();
+    if (project)
+    {
+        Frame* frame = project->get_frame();
+        if (frame)
+        {
+            // Construct the name of the image file.
+            const string filename = std::string(get_time_stamp_string());
+
+            const string file_path = (filesystem::path(Application::get_root_path()) / "snapshots" / std::string(filename)).string();
+
+            // Construct the path to the image file.
+            const string png_file_path = file_path + ".png";
+            frame->write_main_image(png_file_path.c_str());
+
+            const string exr_file_path = file_path + ".exr";
+            frame->write_main_image_without_transformation(exr_file_path.c_str());
+
+            emit signal_take_snapshot(QString(file_path.c_str()));
+        }
+    }
 }
 
 }   // namespace studio

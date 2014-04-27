@@ -196,6 +196,8 @@ set (mainwindow_rendering_sources
     mainwindow/rendering/qttilecallbackfactory.h
     mainwindow/rendering/renderclipboardhandler.cpp
     mainwindow/rendering/renderclipboardhandler.h
+    mainwindow/rendering/renderinghistory.cpp
+    mainwindow/rendering/renderinghistory.h
     mainwindow/rendering/renderingmanager.cpp
     mainwindow/rendering/renderingmanager.h
     mainwindow/rendering/renderingtimer.h

@@ -56,6 +56,7 @@
 // Forward declarations.
 namespace appleseed { namespace studio { class AttributeEditor; } }
 namespace appleseed { namespace studio { class ProjectExplorer; } }
+namespace appleseed { namespace studio { class Renderinghistory ; } }
 namespace appleseed { namespace studio { class MinimizeButton; } }
 namespace Ui        { class MainWindow; }
 class QAction;
@@ -91,6 +92,9 @@ class MainWindow
     void open_project(const QString& filepath);
     void open_and_render_project(const QString& filepath, const QString& configuration);
 
+  signals:
+    void signal_take_snapshot(const QString& name);
+
   private:
     // Not wrapped in std::auto_ptr<> to avoid pulling in the UI definition code.
     Ui::MainWindow*                         m_ui;
@@ -121,6 +125,7 @@ class MainWindow
     AttributeEditor*                        m_attribute_editor;
     RenderingManager                        m_rendering_manager;
     QFileSystemWatcher*                     m_project_file_watcher;
+    Renderinghistory*                       m_rendering_history;
 
     typedef std::map<std::string, RenderTab*> RenderTabCollection;
     typedef std::map<std::string, RenderTab::State> RenderTabStateCollection;
@@ -150,6 +155,8 @@ class MainWindow
     void build_log_panel();
     void build_project_explorer();
     void build_minimize_buttons();
+    void build_rendering_history();
+    void remove_rendering_history();
 
     void build_connections();
 
@@ -239,6 +246,9 @@ class MainWindow
     void slot_save_all_aovs();
     void slot_quicksave_all_aovs();
     void slot_clear_frame();
+    void slot_set_frame_image(const QString& filename);
+
+    void slot_take_snapshot();
 };
 
 }       // namespace studio

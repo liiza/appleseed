@@ -42,6 +42,7 @@
 #include "foundation/image/color.h"
 #include "foundation/image/exceptionunsupportedimageformat.h"
 #include "foundation/image/exrimagefilewriter.h"
+#include "foundation/image/genericimagefilereader.h"
 #include "foundation/image/genericimagefilewriter.h"
 #include "foundation/image/image.h"
 #include "foundation/image/imageattributes.h"
@@ -501,6 +502,30 @@ bool Frame::write_aov_images(const char* file_path) const
     return result;
 }
 
+bool Frame::write_main_image_without_transformation(const char* file_path) const
+{
+    assert(file_path);
+
+    Image image(*impl->m_image);
+
+    const ImageAttributes image_attributes =
+        ImageAttributes::create_default_attributes();
+
+    return write_image(file_path, image, image_attributes);
+}
+
+bool Frame::read_and_set_main_image(const char* file_path)
+{
+    Image* image = read_image(file_path);
+    if (image != 0)
+    {
+        set_image(image);
+        return true;
+    }
+    else 
+        return false;
+}
+
 bool Frame::archive(
     const char*         directory,
     char**              output_path) const
@@ -738,7 +763,55 @@ bool Frame::write_image(
     return true;
 }
 
+Image* Frame::read_image(const char* file_path) const
+{
+    assert(file_path);
 
+    Stopwatch<DefaultWallclockTimer> stopwatch;
+    stopwatch.start();
+    Image* image = 0;
+    ImageAttributes image_attributes =
+        ImageAttributes::create_default_attributes();
+
+    try
+    {
+        GenericImageFileReader reader;
+        image = reader.read(file_path, &image_attributes);
+    }
+    catch (const ExceptionUnsupportedImageFormat&)
+    {
+        RENDERER_LOG_ERROR(
+            "failed to read image file %s: unsupported image format.",
+            file_path);
+    }
+    catch (const ExceptionIOError&)
+    {
+        RENDERER_LOG_ERROR(
+            "failed to read image file %s: i/o error.",
+            file_path);
+    }
+    catch (const Exception& e)
+    {
+        RENDERER_LOG_ERROR(
+            "failed to read image file %s: %s.",
+            file_path,
+            e.what());
+    }
+
+    stopwatch.measure();
+
+    RENDERER_LOG_INFO(
+        "read image file %s in %s.",
+        file_path,
+        pretty_time(stopwatch.get_seconds()).c_str());
+
+    return image;
+}
+
+void Frame::set_image(foundation::Image* image)
+{
+    impl->m_image.reset(image);
+}
 //
 // FrameFactory class implementation.
 //

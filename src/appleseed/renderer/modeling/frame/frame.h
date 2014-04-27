@@ -133,6 +133,9 @@ class DLLSYMBOL Frame
     bool write_main_image(const char* file_path) const;
     bool write_aov_images(const char* file_path) const;
 
+    bool write_main_image_without_transformation(const char* file_path) const;
+    bool read_and_set_main_image(const char* file_path);
+
     // Archive the frame to a given directory on disk. If output_path is provided,
     // the full path to the output file will be returned. The returned string must
     // be freed using foundation::free_string().
@@ -167,6 +170,11 @@ class DLLSYMBOL Frame
         const char*                         file_path,
         const foundation::Image&            image,
         const foundation::ImageAttributes&  image_attributes) const;
+
+    foundation::Image* read_image(
+        const char* file_path) const;
+
+    void set_image(foundation::Image* image);
 };
 
 

@@ -5,6 +5,9 @@
     <parameter name="rendering_threads" value="auto" />
     <parameter name="watch_file_changes" value="false" />
     <parameters name="ui">
+        <parameters name="filedialog">
+            <parameter name="lastdirectory" value="C:\Users\Liisa\Documents\koulu\graffa\asn1-me-c3100-computer-graphics\assn1\objs" />
+        </parameters>
         <parameters name="render_region">
             <parameter name="triggers_rendering" value="true" />
         </parameters>
