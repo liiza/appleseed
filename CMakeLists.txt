@@ -80,6 +80,8 @@ option (WITH_OSL                "Build OSL support"                             
 option (USE_SSE                 "Use SSE and SSE 2 instruction sets"                    ON)
 option (USE_QMC_SAMPLER         "Use QMC sampler (possible software patent issues)"     OFF)
 
+option (HIDE_SYMBOLS            "When using gcc, hide symbols not on the public API"    ON)
+
 
 #--------------------------------------------------------------------------------------------------
 # Enable testing with CTest.
@@ -109,13 +111,23 @@ endif ()
 # Version information.
 #--------------------------------------------------------------------------------------------------
 
-# Extract git tag.
-exec_program (
-    ${git_command}
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ARGS "describe --long"
-    OUTPUT_VARIABLE git_tag
-)
+if (git_tag)
+    # The presence of this variable is currently used as an indication that this is not a git
+    # repository and hence the git command will fail. This variable should be set (via CMake
+    # command line option) to the following versioning pattern: MAJOR.MINOR.PATCH to satisfy
+    # the parsing later on in the file.
+    #
+    # This is just an interim solution and should be replaced by a proper version header file
+    # approach as outlined by Esteban.
+else ()
+    # Extract git tag.
+    exec_program (
+        ${git_command}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ARGS "describe --long"
+        OUTPUT_VARIABLE git_tag
+    )
+endif ()
 
 
 #--------------------------------------------------------------------------------------------------

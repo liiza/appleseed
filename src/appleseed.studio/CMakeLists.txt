@@ -190,6 +190,8 @@ source_group ("mainwindow\\project" FILES
 set (mainwindow_rendering_sources
     mainwindow/rendering/cameracontroller.cpp
     mainwindow/rendering/cameracontroller.h
+    mainwindow/rendering/pixelinspectorhandler.cpp
+    mainwindow/rendering/pixelinspectorhandler.h
     mainwindow/rendering/qtrenderercontroller.cpp
     mainwindow/rendering/qtrenderercontroller.h
     mainwindow/rendering/qttilecallbackfactory.cpp
@@ -296,6 +298,19 @@ source_group ("resources" FILES
     ${resources}
 )
 
+if (WIN32)
+    set (windows_resources
+        resources/windows_resources.rc
+    )
+    list (APPEND appleseed.studio_sources
+        ${windows_resources}
+    )
+    source_group ("resources" FILES
+        ${resources}
+        ${windows_resources}
+    )
+endif ()
+
 
 #--------------------------------------------------------------------------------------------------
 # Generate ui_* files.
@@ -343,7 +358,7 @@ QT4_WRAP_CPP_CPLUSPLUS_FILES (appleseed.studio_generated_moc_cpp_files
 
 
 #--------------------------------------------------------------------------------------------------
-# Compile resource files.
+# Compile Qt resource files.
 #--------------------------------------------------------------------------------------------------
 
 QT4_ADD_RESOURCES (appleseed.studio_resource_files
